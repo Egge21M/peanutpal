@@ -6,6 +6,7 @@ import { generateSecretKey, getPublicKey } from "nostr-tools";
 import { decode, nsecEncode } from "nostr-tools/nip19";
 import ConnectRoute from "./routes/ConnectRoute.tsx";
 import HomeRoute from "./routes/HomeRoute.tsx";
+import WalletRoute from "./routes/WalletRoute.tsx";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import RemoteRoute from "./routes/RemoteRoute.tsx";
@@ -41,6 +42,7 @@ const router = createBrowserRouter([
         path: "",
         element: <HomeRoute />,
       },
+      { path: "/wallet", element: <WalletRoute /> },
       { path: "/remote/:npub", element: <RemoteRoute /> },
       { path: "/connect", element: <ConnectRoute /> },
     ],

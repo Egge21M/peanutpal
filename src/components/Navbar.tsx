@@ -19,6 +19,12 @@ function Navbar() {
               Home
             </Link>
             <Link
+              to={"/wallet"}
+              className="text-gray-700 hover:text-purple-600 hover:bg-purple-50 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+            >
+              Wallet
+            </Link>
+            <Link
               to={"/connect"}
               className="text-gray-700 hover:text-purple-600 hover:bg-purple-50 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
             >
