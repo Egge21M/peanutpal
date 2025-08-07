@@ -1,5 +1,5 @@
 import type { Proof } from "@cashu/cashu-ts";
-import { db, type StoredProof } from "./db";
+import { db, type StoredProof, type ProcessedQuote } from "./db";
 
 export class ProofRepository {
   /**
@@ -112,6 +112,74 @@ export class ProofRepository {
       totalBalance: unspentProofs.reduce((sum, proof) => sum + proof.amount, 0),
       totalSpent: spentProofs.reduce((sum, proof) => sum + proof.amount, 0),
     };
+  }
+
+  // ========== PROCESSED QUOTES METHODS ==========
+
+  /**
+   * Check if a quote has already been processed
+   * @param quoteId The quote ID to check
+   * @returns Promise<boolean> true if already processed
+   */
+  async isQuoteProcessed(quoteId: string): Promise<boolean> {
+    try {
+      const existingQuote = await db.processedQuotes.get(quoteId);
+      return !!existingQuote;
+    } catch (error) {
+      console.error("Error checking processed quote:", error);
+      return false; // Assume not processed on error to be safe
+    }
+  }
+
+  /**
+   * Mark a quote as processed
+   * @param quoteId The quote ID to mark as processed
+   * @param amount The amount for reference
+   */
+  async markQuoteAsProcessed(quoteId: string, amount: number): Promise<void> {
+    try {
+      const processedQuote: ProcessedQuote = {
+        quoteId,
+        processedAt: Date.now(),
+        amount,
+      };
+      await db.processedQuotes.put(processedQuote);
+    } catch (error) {
+      console.error("Error marking quote as processed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all processed quotes (for debugging/admin purposes)
+   */
+  async getAllProcessedQuotes(): Promise<ProcessedQuote[]> {
+    try {
+      return await db.processedQuotes
+        .orderBy("processedAt")
+        .reverse()
+        .toArray();
+    } catch (error) {
+      console.error("Error getting processed quotes:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Clean up old processed quotes (keep only last 30 days)
+   */
+  async cleanupOldProcessedQuotes(): Promise<number> {
+    try {
+      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      const deletedCount = await db.processedQuotes
+        .where("processedAt")
+        .below(thirtyDaysAgo)
+        .delete();
+      return deletedCount;
+    } catch (error) {
+      console.error("Error cleaning up old processed quotes:", error);
+      return 0;
+    }
   }
 }
 

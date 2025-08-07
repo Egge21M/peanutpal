@@ -16,7 +16,10 @@ export class WalletService {
    * @param quote The mint quote response from the paid invoice
    * @returns Promise with payment result including success status and new balance
    */
-  async processPaidInvoice(quote: MintQuoteResponse): Promise<PaymentResult> {
+  async processPaidInvoice(
+    quote: MintQuoteResponse,
+    type?: "local" | "remote",
+  ): Promise<PaymentResult> {
     try {
       console.log("Processing paid invoice for amount:", quote.amount);
 
@@ -33,7 +36,11 @@ export class WalletService {
       console.log("Total balance:", balance);
 
       // Show success toast
-      toast.success("🎉 Payment received! Proofs stored successfully.", {
+      const message =
+        type === "remote"
+          ? "🌐 Remote Payment received! Proofs stored successfully."
+          : "🎉 Payment received! Proofs stored successfully.";
+      toast.success(message, {
         position: "top-right",
         autoClose: 5000,
         hideProgressBar: false,

@@ -8,9 +8,17 @@ export interface StoredProof extends Proof {
   mintUrl: string; // Which mint this proof came from
 }
 
+// Interface for tracking processed quotes to prevent double-processing
+export interface ProcessedQuote {
+  quoteId: string; // Primary key - the quote ID from MintQuoteResponse
+  processedAt: number; // Timestamp when quote was processed
+  amount: number; // Amount for reference
+}
+
 export class PeanutPalDB extends Dexie {
   // Define tables
   proofs!: Table<StoredProof>;
+  processedQuotes!: Table<ProcessedQuote>;
 
   constructor() {
     super("PeanutPalDB");
@@ -22,10 +30,13 @@ export class PeanutPalDB extends Dexie {
 
     // Version 2: Removed boolean indexes to fix IndexedDB key range errors
     this.version(2).stores({
-      // Define schema - using 'secret' as primary key since it's unique per proof
-      // The 'id' field from Proof type is not unique, but 'secret' is guaranteed unique
-      // Note: Removed isSpent from indexes as boolean values cause issues in IndexedDB
       proofs: "&secret, amount, createdAt, mintUrl",
+    });
+
+    // Version 3: Added processedQuotes table for Nostr subscription deduplication
+    this.version(3).stores({
+      proofs: "&secret, amount, createdAt, mintUrl",
+      processedQuotes: "&quoteId, processedAt, amount",
     });
   }
 }
