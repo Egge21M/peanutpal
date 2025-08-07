@@ -3,8 +3,8 @@ import NumberPad from "../components/NumberPad";
 import type { MintQuoteResponse } from "@cashu/cashu-ts";
 import { wallet } from "../wallet";
 import InvoiceModal from "../components/InvoiceModal";
-import { toast } from "react-toastify";
 import confetti from "canvas-confetti";
+import { walletService } from "../services";
 
 function HomeRoute() {
   const [quote, setQuote] = useState<MintQuoteResponse>();
@@ -18,47 +18,29 @@ function HomeRoute() {
       wallet.onMintQuotePaid(
         quote.quote,
         async () => {
-          const newProofs = await wallet.mintProofs(quote.amount, quote.quote);
-          console.log(newProofs);
+          // Process payment through wallet service
+          const result = await walletService.processPaidInvoice(quote);
+
           setQuote(undefined);
 
-          // Reset the NumberPad input to zero
-          setResetTrigger((prev) => prev + 1);
+          if (result.success) {
+            // Reset the NumberPad input to zero
+            setResetTrigger((prev) => prev + 1);
 
-          // Celebrate with confetti
-          confetti({
-            particleCount: 100,
-            spread: 100,
-            origin: { y: 0.6 },
-            colors: ["#8B5CF6", "#A855F7", "#C084FC", "#DDD6FE"],
-          });
-
-          // Show success toast
-          toast.success(
-            "🎉 Payment received! Invoice has been paid successfully.",
-            {
-              position: "top-right",
-              autoClose: 5000,
-              hideProgressBar: false,
-              closeOnClick: true,
-              pauseOnHover: true,
-              draggable: true,
-            },
-          );
+            // Celebrate with confetti
+            confetti({
+              particleCount: 100,
+              spread: 100,
+              origin: { y: 0.6 },
+              colors: ["#8B5CF6", "#A855F7", "#C084FC", "#DDD6FE"],
+            });
+          }
+          // Note: Success/error toasts are handled by the wallet service
         },
         (e) => {
-          console.error(e);
+          // Handle payment failure through wallet service
+          walletService.handlePaymentFailure(e);
           setQuote(undefined);
-
-          // Show error toast
-          toast.error("❌ Payment failed. Please try again.", {
-            position: "top-right",
-            autoClose: 5000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
-          });
         },
       );
     }
