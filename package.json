@@ -10,12 +10,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@cashu/cashu-ts": "^2.6.0",
     "@tailwindcss/vite": "^4.1.11",
+    "@types/canvas-confetti": "^1.9.0",
+    "canvas-confetti": "^1.9.3",
     "nostr-tools": "^2.16.2",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-qr-code": "^2.0.18",
     "react-router": "^7.7.1",
+    "react-toastify": "^11.0.5",
     "tailwindcss": "^4.1.11"
   },
   "devDependencies": {
