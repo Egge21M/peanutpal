@@ -9,7 +9,7 @@ import ConnectRoute from "./routes/ConnectRoute.tsx";
 if (!localStorage.getItem("peanut-key")) {
   const newKey = generateSecretKey();
   const encoded = nsecEncode(newKey);
-  localStorage.setItem("peeanut-key", encoded);
+  localStorage.setItem("peanut-key", encoded);
 }
 
 const router = createBrowserRouter([
