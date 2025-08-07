@@ -15,10 +15,18 @@ export interface ProcessedQuote {
   amount: number; // Amount for reference
 }
 
+// Generic app configuration key-value store
+export interface AppConfig {
+  key: string; // Primary key
+  value: string; // Arbitrary string value (JSON-encoded if needed)
+  updatedAt: number; // Timestamp when value was last updated
+}
+
 export class PeanutPalDB extends Dexie {
   // Define tables
   proofs!: Table<StoredProof>;
   processedQuotes!: Table<ProcessedQuote>;
+  config!: Table<AppConfig>;
 
   constructor() {
     super("PeanutPalDB");
@@ -37,6 +45,13 @@ export class PeanutPalDB extends Dexie {
     this.version(3).stores({
       proofs: "&secret, amount, createdAt, mintUrl",
       processedQuotes: "&quoteId, processedAt, amount",
+    });
+
+    // Version 4: Add generic app config key-value table
+    this.version(4).stores({
+      proofs: "&secret, amount, createdAt, mintUrl",
+      processedQuotes: "&quoteId, processedAt, amount",
+      config: "&key, updatedAt",
     });
   }
 }

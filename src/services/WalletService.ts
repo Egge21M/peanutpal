@@ -1,5 +1,5 @@
 import { toast } from "react-toastify";
-import { wallet, MINT_URL } from "../wallet";
+import { getWalletWithMintUrl } from "../wallet";
 import { proofRepository } from "../database";
 import type { MintQuoteResponse, Proof } from "@cashu/cashu-ts";
 
@@ -23,12 +23,15 @@ export class WalletService {
     try {
       console.log("Processing paid invoice for amount:", quote.amount);
 
+      // Use the wallet bound to the currently configured mint URL
+      const { wallet, mintUrl } = await getWalletWithMintUrl();
+
       // Mint proofs from the wallet
       const newProofs = await wallet.mintProofs(quote.amount, quote.quote);
       console.log("Minted proofs:", newProofs);
 
-      // Store proofs in database
-      await proofRepository.storeProofs(newProofs, MINT_URL);
+      // Store proofs under the exact mint URL used by the wallet
+      await proofRepository.storeProofs(newProofs, mintUrl);
       console.log("Proofs stored successfully");
 
       // Get updated balance
