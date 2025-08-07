@@ -2,8 +2,6 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import { createBrowserRouter, RouterProvider } from "react-router";
 import BaseRoute from "./routes/BaseRoute.tsx";
-import { generateSecretKey, getPublicKey } from "nostr-tools";
-import { decode, nsecEncode } from "nostr-tools/nip19";
 import ConnectRoute from "./routes/ConnectRoute.tsx";
 import HomeRoute from "./routes/HomeRoute.tsx";
 import WalletRoute from "./routes/WalletRoute.tsx";
@@ -12,20 +10,9 @@ import "react-toastify/dist/ReactToastify.css";
 import RemoteRoute from "./routes/RemoteRoute.tsx";
 import { nostrService } from "./services";
 
-if (!localStorage.getItem("peanut-key")) {
-  const newKey = generateSecretKey();
-  const encoded = nsecEncode(newKey);
-  localStorage.setItem("peanut-key", encoded);
-}
-
-// Initialize Nostr payment listening
-const nsec = localStorage.getItem("peanut-key") as `nsec1${string}`;
-const decoded = decode(nsec);
-const pk = getPublicKey(decoded.data);
-
-// Start listening for remote payments via Nostr
-nostrService.startListening(pk, decoded.data).catch((error) => {
-  console.error("Failed to start Nostr payment listener:", error);
+// Initialize keys and start Nostr listening
+nostrService.initAndStart().catch((error) => {
+  console.error("Failed to initialize Nostr:", error);
 });
 
 // Perform maintenance cleanup on startup (cleanup old processed quotes)
