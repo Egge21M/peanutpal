@@ -2,6 +2,7 @@ import { toast } from "react-toastify";
 import { getWalletWithMintUrl } from "../wallet";
 import { proofRepository, historyRepository } from "../database";
 import { appEvents } from "./EventBus";
+import { CashuWallet, getEncodedTokenV4 } from "@cashu/cashu-ts";
 import type { MintQuoteResponse, Proof } from "@cashu/cashu-ts";
 
 export interface PaymentResult {
@@ -152,6 +153,69 @@ export class WalletService {
     } catch (error) {
       console.error("Error getting unspent proofs:", error);
       return [];
+    }
+  }
+
+  /**
+   * Build a withdraw token from all unspent proofs for the currently configured mint
+   * - Encodes the selected proofs into a Cashu token (v4)
+   * - Subscribes to proof state updates for those secrets and deletes them once spent
+   */
+  async createWithdrawToken(): Promise<
+    { token: string; amount: number; mintUrl: string } | { error: string }
+  > {
+    try {
+      const allUnspent = await this.getUnspentProofs();
+      if (allUnspent.length === 0) {
+        return { error: "No unspent proofs available" };
+      }
+
+      // Use current configured wallet/mint
+      const { wallet, mintUrl } = await getWalletWithMintUrl();
+      const selectedProofs = allUnspent.filter((p) => p.mintUrl === mintUrl);
+      if (selectedProofs.length === 0) {
+        return { error: "No unspent proofs for current mint" };
+      }
+
+      const total = selectedProofs.reduce((a, b) => a + b.amount, 0);
+      const token = getEncodedTokenV4({ mint: mintUrl, proofs: selectedProofs });
+
+      // Record history event for the constructed token (withdrawal intent)
+      await historyRepository.addWithdrawalEvent({
+        amount: total,
+        mintUrl,
+        metadata: { numProofs: selectedProofs.length },
+      });
+
+      // Start monitoring selected secrets for spending, and delete when spent
+      this.monitorProofSpendWithWallet(wallet, selectedProofs).catch((e) =>
+        console.error("Failed to start proof spend monitor:", e),
+      );
+
+      return { token, amount: total, mintUrl };
+    } catch (error) {
+      console.error("Error building withdraw token:", error);
+      return { error: error instanceof Error ? error.message : "Unknown error" };
+    }
+  }
+
+  private async monitorProofSpendWithWallet(wallet: CashuWallet, proofs: Proof[]): Promise<void> {
+    try {
+      wallet.onProofStateUpdates(
+        proofs,
+        async (state) => {
+          try {
+            if (state.state === "SPENT")
+              await proofRepository.deleteProofsBySecrets(proofs.map((p) => p.secret));
+            appEvents.emitWalletUpdated({ reason: "withdrawal" });
+          } catch (err) {
+            console.error("Error handling proof state update:", err);
+          }
+        },
+        console.error,
+      );
+    } catch (error) {
+      console.error("Error setting up proof spend monitor:", error);
     }
   }
 }
