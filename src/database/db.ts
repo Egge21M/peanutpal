@@ -22,11 +22,24 @@ export interface AppConfig {
   updatedAt: number; // Timestamp when value was last updated
 }
 
+export type WalletEventType = "direct-payment" | "remote-payment" | "withdrawal";
+
+export interface HistoryEvent {
+  id?: number; // Auto-increment primary key
+  createdAt: number; // Timestamp
+  amount: number; // In sats
+  type: WalletEventType;
+  mintUrl?: string; // Mint URL associated with the event
+  quoteId?: string; // For payments: the quote identifier
+  metadata?: string; // JSON string for arbitrary metadata
+}
+
 export class PeanutPalDB extends Dexie {
   // Define tables
   proofs!: Table<StoredProof>;
   processedQuotes!: Table<ProcessedQuote>;
   config!: Table<AppConfig>;
+  historyEvents!: Table<HistoryEvent>;
 
   constructor() {
     super("PeanutPalDB");
@@ -52,6 +65,14 @@ export class PeanutPalDB extends Dexie {
       proofs: "&secret, amount, createdAt, mintUrl",
       processedQuotes: "&quoteId, processedAt, amount",
       config: "&key, updatedAt",
+    });
+
+    // Version 5: Add wallet history events table
+    this.version(5).stores({
+      proofs: "&secret, amount, createdAt, mintUrl",
+      processedQuotes: "&quoteId, processedAt, amount",
+      config: "&key, updatedAt",
+      historyEvents: "++id, createdAt, type, amount, mintUrl, quoteId",
     });
   }
 }

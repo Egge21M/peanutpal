@@ -1,6 +1,6 @@
 import { toast } from "react-toastify";
 import { getWalletWithMintUrl } from "../wallet";
-import { proofRepository } from "../database";
+import { proofRepository, historyRepository } from "../database";
 import type { MintQuoteResponse, Proof } from "@cashu/cashu-ts";
 
 export interface PaymentResult {
@@ -38,6 +38,15 @@ export class WalletService {
       const balance = await proofRepository.getTotalBalance();
       console.log("Total balance:", balance);
 
+      // Record history event
+      await historyRepository.addPaymentEvent({
+        amount: quote.amount,
+        type: type === "remote" ? "remote-payment" : "direct-payment",
+        mintUrl,
+        quoteId: quote.quote,
+        metadata: { request: quote.request },
+      });
+
       // Show success toast
       const message =
         type === "remote"
@@ -60,21 +69,17 @@ export class WalletService {
     } catch (error) {
       console.error("Error processing payment:", error);
 
-      const errorMessage =
-        error instanceof Error ? error.message : "Unknown error occurred";
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
 
       // Show error toast
-      toast.error(
-        "❌ Error storing payment proofs. Please check the console.",
-        {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-          closeOnClick: true,
-          pauseOnHover: true,
-          draggable: true,
-        },
-      );
+      toast.error("❌ Error storing payment proofs. Please check the console.", {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
 
       return {
         success: false,

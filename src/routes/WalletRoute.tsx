@@ -1,16 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { walletService } from "../services";
+import { historyRepository, type HistoryEvent } from "../database";
 
 function WalletRoute() {
   const [balance, setBalance] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
-  const [stats, setStats] = useState({
-    totalProofs: 0,
-    unspentProofs: 0,
-    spentProofs: 0,
-    totalBalance: 0,
-    totalSpent: 0,
-  });
+  const [events, setEvents] = useState<HistoryEvent[]>([]);
+  const [total, setTotal] = useState<number>(0);
+  const [page, setPage] = useState<number>(1);
+  const pageSize = 10;
 
   // Load wallet data on component mount
   useEffect(() => {
@@ -20,13 +18,14 @@ function WalletRoute() {
   const loadWalletData = async () => {
     try {
       setLoading(true);
-      const [currentBalance, walletStats] = await Promise.all([
+      const [currentBalance, pageData] = await Promise.all([
         walletService.getBalance(),
-        walletService.getWalletStats(),
+        historyRepository.getPaginated(page, pageSize),
       ]);
 
       setBalance(currentBalance);
-      setStats(walletStats);
+      setEvents(pageData.events);
+      setTotal(pageData.total);
     } catch (error) {
       console.error("Error loading wallet data:", error);
     } finally {
@@ -38,6 +37,13 @@ function WalletRoute() {
     // TODO: Implement withdraw functionality
     console.log("Withdraw button clicked - functionality to be implemented");
   };
+
+  useEffect(() => {
+    loadWalletData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
+
+  const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total]);
 
   if (loading) {
     return (
@@ -58,20 +64,15 @@ function WalletRoute() {
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Wallet</h1>
-          <p className="text-gray-600">
-            Manage your Cashu wallet balance and transactions
-          </p>
+          <p className="text-gray-600">Manage your Cashu wallet balance and transactions</p>
         </div>
 
         {/* Balance Card */}
         <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
           <div className="bg-purple-600 px-6 py-8 text-center">
-            <h2 className="text-lg font-medium text-purple-100 mb-2">
-              Current Balance
-            </h2>
+            <h2 className="text-lg font-medium text-purple-100 mb-2">Current Balance</h2>
             <div className="text-4xl font-bold text-white mb-4">
-              {balance.toLocaleString()}{" "}
-              <span className="text-2xl font-normal">sats</span>
+              {balance.toLocaleString()} <span className="text-2xl font-normal">sats</span>
             </div>
 
             {/* Action Buttons */}
@@ -92,67 +93,79 @@ function WalletRoute() {
           </div>
         </div>
 
-        {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <div className="text-2xl font-bold text-purple-600 mb-2">
-              {stats.totalProofs}
-            </div>
-            <div className="text-sm text-gray-600">Total Proofs</div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <div className="text-2xl font-bold text-green-600 mb-2">
-              {stats.unspentProofs}
-            </div>
-            <div className="text-sm text-gray-600">Unspent Proofs</div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <div className="text-2xl font-bold text-red-600 mb-2">
-              {stats.spentProofs}
-            </div>
-            <div className="text-sm text-gray-600">Spent Proofs</div>
-          </div>
-
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <div className="text-2xl font-bold text-gray-700 mb-2">
-              {stats.totalSpent.toLocaleString()}
-            </div>
-            <div className="text-sm text-gray-600">Total Spent (sats)</div>
-          </div>
-        </div>
-
-        {/* Information Section */}
+        {/* Events List */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-800">
-              Wallet Information
-            </h3>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">
-                  About Your Wallet
-                </h4>
-                <p className="text-gray-600 text-sm">
-                  Your PeanutPal wallet stores Cashu proofs locally in your
-                  browser. These proofs represent Bitcoin Lightning sats that
-                  you can spend or withdraw.
-                </p>
-              </div>
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">
-                  Security Note
-                </h4>
-                <p className="text-gray-600 text-sm">
-                  Your proofs are stored locally in your browser's database.
-                  Make sure to keep your browser data backed up to avoid losing
-                  funds.
-                </p>
-              </div>
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+            <h3 className="text-lg font-semibold text-gray-800">History</h3>
+            <div className="text-sm text-gray-500">
+              Page {page} of {totalPages}
             </div>
+          </div>
+          <div className="divide-y">
+            {events.length === 0 ? (
+              <div className="p-6 text-center text-gray-500">No events yet.</div>
+            ) : (
+              events.map((evt) => {
+                let typeColor = "text-gray-700";
+                if (evt.type === "direct-payment") typeColor = "text-green-600";
+                if (evt.type === "remote-payment") typeColor = "text-purple-600";
+                if (evt.type === "withdrawal") typeColor = "text-red-600";
+                return (
+                  <div key={evt.id} className="p-4 flex items-start justify-between gap-4">
+                    <div>
+                      <div className={`font-semibold ${typeColor}`}>{evt.type}</div>
+                      <div className="text-sm text-gray-600">
+                        {new Date(evt.createdAt).toLocaleString()}
+                      </div>
+                      {evt.mintUrl && (
+                        <div className="text-xs text-gray-500 break-all">{evt.mintUrl}</div>
+                      )}
+                      {evt.quoteId && (
+                        <div className="text-xs text-gray-500 break-all">quote: {evt.quoteId}</div>
+                      )}
+                      {evt.metadata && (
+                        <pre className="mt-2 bg-gray-50 border border-gray-200 rounded-md p-2 text-xs text-gray-700 max-w-full overflow-x-auto">
+                          {(() => {
+                            try {
+                              return JSON.stringify(JSON.parse(evt.metadata), null, 2);
+                            } catch {
+                              return evt.metadata;
+                            }
+                          })()}
+                        </pre>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-gray-900">
+                        {evt.type === "withdrawal" ? "-" : "+"}
+                        {evt.amount.toLocaleString()}{" "}
+                        <span className="text-sm font-normal">sats</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+          {/* Pagination */}
+          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 disabled:opacity-50 hover:bg-gray-100"
+            >
+              Previous
+            </button>
+            <div className="text-sm text-gray-600">
+              {events.length} of {total} events
+            </div>
+            <button
+              onClick={() => setPage((p) => (p < totalPages ? p + 1 : p))}
+              disabled={page >= totalPages}
+              className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 disabled:opacity-50 hover:bg-gray-100"
+            >
+              Next
+            </button>
           </div>
         </div>
       </div>
