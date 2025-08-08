@@ -8,6 +8,7 @@ import WalletRoute from "./routes/WalletRoute.tsx";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import RemoteRoute from "./routes/RemoteRoute.tsx";
+import SettingsRoute from "./routes/SettingsRoute.tsx";
 import { nostrService } from "./services";
 
 // Initialize keys and start Nostr listening
@@ -27,6 +28,7 @@ const router = createBrowserRouter([
       { path: "/wallet", element: <WalletRoute /> },
       { path: "/remote/:npub", element: <RemoteRoute /> },
       { path: "/connect", element: <ConnectRoute /> },
+      { path: "/settings", element: <SettingsRoute /> },
     ],
   },
 ]);

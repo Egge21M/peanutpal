@@ -30,6 +30,12 @@ function Navbar() {
             >
               Connect
             </Link>
+            <Link
+              to={"/settings"}
+              className="text-gray-700 hover:text-purple-600 hover:bg-purple-50 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+            >
+              Settings
+            </Link>
           </div>
         </div>
       </div>
