@@ -3,7 +3,7 @@ import { getWalletWithMintUrl } from "../wallet";
 import { proofRepository, historyRepository } from "../database";
 import { appEvents } from "./EventBus";
 import { CashuWallet, getEncodedTokenV4 } from "@cashu/cashu-ts";
-import type { MintQuoteResponse, Proof } from "@cashu/cashu-ts";
+import type { MintQuoteResponse, Proof, ProofState } from "@cashu/cashu-ts";
 
 export interface PaymentResult {
   success: boolean;
@@ -180,15 +180,8 @@ export class WalletService {
       const total = selectedProofs.reduce((a, b) => a + b.amount, 0);
       const token = getEncodedTokenV4({ mint: mintUrl, proofs: selectedProofs });
 
-      // Record history event for the constructed token (withdrawal intent)
-      await historyRepository.addWithdrawalEvent({
-        amount: total,
-        mintUrl,
-        metadata: { numProofs: selectedProofs.length },
-      });
-
       // Start monitoring selected secrets for spending, and delete when spent
-      this.monitorProofSpendWithWallet(wallet, selectedProofs).catch((e) =>
+      this.monitorProofSpendWithWallet(wallet, selectedProofs, { mintUrl, total }).catch((e) =>
         console.error("Failed to start proof spend monitor:", e),
       );
 
@@ -199,21 +192,32 @@ export class WalletService {
     }
   }
 
-  private async monitorProofSpendWithWallet(wallet: CashuWallet, proofs: Proof[]): Promise<void> {
+  private async monitorProofSpendWithWallet(
+    wallet: CashuWallet,
+    proofs: Proof[],
+    context: { mintUrl: string; total: number },
+  ): Promise<void> {
     try {
-      wallet.onProofStateUpdates(
-        proofs,
-        async (state) => {
-          try {
-            if (state.state === "SPENT")
-              await proofRepository.deleteProofsBySecrets(proofs.map((p) => p.secret));
-            appEvents.emitWalletUpdated({ reason: "withdrawal" });
-          } catch (err) {
-            console.error("Error handling proof state update:", err);
-          }
-        },
-        console.error,
-      );
+      let unsub: Awaited<ReturnType<CashuWallet["onProofStateUpdates"]>> | undefined = undefined;
+      const handler = async (state: ProofState) => {
+        try {
+          if (state?.state !== "SPENT") return;
+          const secrets = proofs.map((p) => p.secret);
+          await proofRepository.deleteProofsBySecrets(secrets);
+          await historyRepository.addWithdrawalEvent({
+            amount: context.total,
+            mintUrl: context.mintUrl,
+            metadata: { numProofs: proofs.length },
+          });
+          appEvents.emitWalletUpdated({ reason: "withdrawal" });
+          // Unsubscribe if supported
+          if (typeof unsub === "function") unsub();
+        } catch (err) {
+          console.error("Error handling proof state update:", err);
+        }
+      };
+
+      unsub = await wallet.onProofStateUpdates(proofs, handler, console.error);
     } catch (error) {
       console.error("Error setting up proof spend monitor:", error);
     }

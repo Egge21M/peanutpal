@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { walletService } from "../services";
 import { historyRepository, type HistoryEvent } from "../database";
 import { appEvents } from "../services/EventBus";
+import TokenQrModal from "../components/TokenQrModal";
 
 function WalletRoute() {
   const [balance, setBalance] = useState<number>(0);
@@ -10,6 +11,8 @@ function WalletRoute() {
   const [total, setTotal] = useState<number>(0);
   const [page, setPage] = useState<number>(1);
   const pageSize = 10;
+  const [withdrawToken, setWithdrawToken] = useState<string>("");
+  const [withdrawOpen, setWithdrawOpen] = useState<boolean>(false);
 
   // Load wallet data on component mount
   useEffect(() => {
@@ -34,9 +37,14 @@ function WalletRoute() {
     }
   };
 
-  const handleWithdraw = () => {
-    // TODO: Implement withdraw functionality
-    console.log("Withdraw button clicked - functionality to be implemented");
+  const handleWithdraw = async () => {
+    const res = await walletService.createWithdrawToken();
+    if ("error" in res) {
+      console.error(res.error);
+      return;
+    }
+    setWithdrawToken(res.token);
+    setWithdrawOpen(true);
   };
 
   useEffect(() => {
@@ -70,117 +78,126 @@ function WalletRoute() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Wallet</h1>
-          <p className="text-gray-600">Manage your Cashu wallet balance and transactions</p>
-        </div>
+    <>
+      <div className="min-h-screen bg-gray-50 py-8">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Wallet</h1>
+            <p className="text-gray-600">Manage your Cashu wallet balance and transactions</p>
+          </div>
 
-        {/* Balance Card */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
-          <div className="bg-purple-600 px-6 py-8 text-center">
-            <h2 className="text-lg font-medium text-purple-100 mb-2">Current Balance</h2>
-            <div className="text-4xl font-bold text-white mb-4">
-              {balance.toLocaleString()} <span className="text-2xl font-normal">sats</span>
-            </div>
+          {/* Balance Card */}
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-8">
+            <div className="bg-purple-600 px-6 py-8 text-center">
+              <h2 className="text-lg font-medium text-purple-100 mb-2">Current Balance</h2>
+              <div className="text-4xl font-bold text-white mb-4">
+                {balance.toLocaleString()} <span className="text-2xl font-normal">sats</span>
+              </div>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <button
-                onClick={handleWithdraw}
-                className="bg-white text-purple-600 hover:bg-purple-50 px-6 py-3 rounded-md font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:ring-offset-2"
-              >
-                💸 Withdraw
-              </button>
-              <button
-                onClick={loadWalletData}
-                className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-3 rounded-md font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:ring-offset-2"
-              >
-                🔄 Refresh
-              </button>
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <button
+                  onClick={handleWithdraw}
+                  className="bg-white text-purple-600 hover:bg-purple-50 px-6 py-3 rounded-md font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:ring-offset-2"
+                >
+                  💸 Withdraw
+                </button>
+                <button
+                  onClick={loadWalletData}
+                  className="bg-purple-700 hover:bg-purple-800 text-white px-6 py-3 rounded-md font-semibold transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-purple-300 focus:ring-offset-2"
+                >
+                  🔄 Refresh
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Events List */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-800">History</h3>
-            <div className="text-sm text-gray-500">
-              Page {page} of {totalPages}
+          {/* Events List */}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-800">History</h3>
+              <div className="text-sm text-gray-500">
+                Page {page} of {totalPages}
+              </div>
             </div>
-          </div>
-          <div className="divide-y">
-            {events.length === 0 ? (
-              <div className="p-6 text-center text-gray-500">No events yet.</div>
-            ) : (
-              events.map((evt) => {
-                let typeColor = "text-gray-700";
-                if (evt.type === "direct-payment") typeColor = "text-green-600";
-                if (evt.type === "remote-payment") typeColor = "text-purple-600";
-                if (evt.type === "withdrawal") typeColor = "text-red-600";
-                return (
-                  <div key={evt.id} className="p-4 flex items-start justify-between gap-4">
-                    <div>
-                      <div className={`font-semibold ${typeColor}`}>{evt.type}</div>
-                      <div className="text-sm text-gray-600">
-                        {new Date(evt.createdAt).toLocaleString()}
+            <div className="divide-y">
+              {events.length === 0 ? (
+                <div className="p-6 text-center text-gray-500">No events yet.</div>
+              ) : (
+                events.map((evt) => {
+                  let typeColor = "text-gray-700";
+                  if (evt.type === "direct-payment") typeColor = "text-green-600";
+                  if (evt.type === "remote-payment") typeColor = "text-purple-600";
+                  if (evt.type === "withdrawal") typeColor = "text-red-600";
+                  return (
+                    <div key={evt.id} className="p-4 flex items-start justify-between gap-4">
+                      <div>
+                        <div className={`font-semibold ${typeColor}`}>{evt.type}</div>
+                        <div className="text-sm text-gray-600">
+                          {new Date(evt.createdAt).toLocaleString()}
+                        </div>
+                        {evt.mintUrl && (
+                          <div className="text-xs text-gray-500 break-all">{evt.mintUrl}</div>
+                        )}
+                        {evt.quoteId && (
+                          <div className="text-xs text-gray-500 break-all">
+                            quote: {evt.quoteId}
+                          </div>
+                        )}
+                        {evt.metadata && (
+                          <pre className="mt-2 bg-gray-50 border border-gray-200 rounded-md p-2 text-xs text-gray-700 max-w-full overflow-x-auto">
+                            {(() => {
+                              try {
+                                return JSON.stringify(JSON.parse(evt.metadata), null, 2);
+                              } catch {
+                                return evt.metadata;
+                              }
+                            })()}
+                          </pre>
+                        )}
                       </div>
-                      {evt.mintUrl && (
-                        <div className="text-xs text-gray-500 break-all">{evt.mintUrl}</div>
-                      )}
-                      {evt.quoteId && (
-                        <div className="text-xs text-gray-500 break-all">quote: {evt.quoteId}</div>
-                      )}
-                      {evt.metadata && (
-                        <pre className="mt-2 bg-gray-50 border border-gray-200 rounded-md p-2 text-xs text-gray-700 max-w-full overflow-x-auto">
-                          {(() => {
-                            try {
-                              return JSON.stringify(JSON.parse(evt.metadata), null, 2);
-                            } catch {
-                              return evt.metadata;
-                            }
-                          })()}
-                        </pre>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-gray-900">
-                        {evt.type === "withdrawal" ? "-" : "+"}
-                        {evt.amount.toLocaleString()}{" "}
-                        <span className="text-sm font-normal">sats</span>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-gray-900">
+                          {evt.type === "withdrawal" ? "-" : "+"}
+                          {evt.amount.toLocaleString()}{" "}
+                          <span className="text-sm font-normal">sats</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-          {/* Pagination */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 disabled:opacity-50 hover:bg-gray-100"
-            >
-              Previous
-            </button>
-            <div className="text-sm text-gray-600">
-              {events.length} of {total} events
+                  );
+                })
+              )}
             </div>
-            <button
-              onClick={() => setPage((p) => (p < totalPages ? p + 1 : p))}
-              disabled={page >= totalPages}
-              className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 disabled:opacity-50 hover:bg-gray-100"
-            >
-              Next
-            </button>
+            {/* Pagination */}
+            <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex items-center justify-between">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 disabled:opacity-50 hover:bg-gray-100"
+              >
+                Previous
+              </button>
+              <div className="text-sm text-gray-600">
+                {events.length} of {total} events
+              </div>
+              <button
+                onClick={() => setPage((p) => (p < totalPages ? p + 1 : p))}
+                disabled={page >= totalPages}
+                className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 disabled:opacity-50 hover:bg-gray-100"
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+      <TokenQrModal
+        token={withdrawToken}
+        isOpen={withdrawOpen}
+        onClose={() => setWithdrawOpen(false)}
+      />
+    </>
   );
 }
 
