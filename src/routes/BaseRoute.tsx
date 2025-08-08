@@ -17,7 +17,8 @@ function BaseRoute() {
   return (
     <div className="">
       <Navbar />
-      <main className="p-2">
+      {/* Add left padding on large screens to account for the fixed sidebar width */}
+      <main className="p-2 lg:pl-64">
         <Outlet />
       </main>
     </div>
