@@ -90,20 +90,6 @@ export class NostrService {
   }
 
   /**
-   * Cleanup old processed quotes (call this periodically)
-   */
-  async performMaintenance(): Promise<void> {
-    try {
-      const deletedCount = await proofRepository.cleanupOldProcessedQuotes();
-      if (deletedCount > 0) {
-        console.log(`Cleaned up ${deletedCount} old processed quotes`);
-      }
-    } catch (error) {
-      console.error("Error during Nostr service maintenance:", error);
-    }
-  }
-
-  /**
    * Initialize keys and relays and start listening based on local storage key
    */
   async initAndStart(): Promise<void> {

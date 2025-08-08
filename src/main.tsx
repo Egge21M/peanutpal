@@ -15,11 +15,6 @@ nostrService.initAndStart().catch((error) => {
   console.error("Failed to initialize Nostr:", error);
 });
 
-// Perform maintenance cleanup on startup (cleanup old processed quotes)
-nostrService.performMaintenance().catch((error) => {
-  console.error("Failed to perform Nostr service maintenance:", error);
-});
-
 const router = createBrowserRouter([
   {
     path: "/",
