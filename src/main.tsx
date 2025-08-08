@@ -26,11 +26,11 @@ const router = createBrowserRouter([
         element: <HomeRoute />,
       },
       { path: "/wallet", element: <WalletRoute /> },
-      { path: "/remote/:npub", element: <RemoteRoute /> },
       { path: "/connect", element: <ConnectRoute /> },
       { path: "/settings", element: <SettingsRoute /> },
     ],
   },
+  { path: "/remote/:npub", element: <RemoteRoute /> },
 ]);
 
 createRoot(document.getElementById("root")!).render(

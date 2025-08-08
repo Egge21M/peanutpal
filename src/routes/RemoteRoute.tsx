@@ -23,7 +23,15 @@ function RemoteRoute() {
     return <OwnKeyWarning />;
   }
 
-  return <PaymentInterface onPaymentReceived={remotePaymentHandler} />;
+  return (
+    <div className="pt-4 flex flex-col items-center gap-4">
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">Remote POS</h1>
+        <p className="text-gray-600 text-xs">Creating invoices for {npub}</p>
+      </div>
+      <PaymentInterface onPaymentReceived={remotePaymentHandler} />
+    </div>
+  );
 }
 
 export default RemoteRoute;
