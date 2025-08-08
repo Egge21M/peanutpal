@@ -3,6 +3,7 @@ import { db, type AppConfig } from "./db";
 export const CONFIG_KEYS = {
   MINT_URL: "MINT_URL",
   RELAYS: "RELAYS",
+  ONBOARDED: "ONBOARDED",
 } as const;
 
 const DEFAULTS = {
@@ -66,6 +67,15 @@ export class ConfigRepository {
 
   async setRelays(relays: string[]): Promise<void> {
     await this.set(CONFIG_KEYS.RELAYS, JSON.stringify(relays));
+  }
+
+  async isOnboarded(): Promise<boolean> {
+    const value = await this.get(CONFIG_KEYS.ONBOARDED);
+    return value === "true";
+  }
+
+  async setOnboarded(done: boolean): Promise<void> {
+    await this.set(CONFIG_KEYS.ONBOARDED, done ? "true" : "false");
   }
 }
 

@@ -10,21 +10,31 @@ import "react-toastify/dist/ReactToastify.css";
 import RemoteRoute from "./routes/RemoteRoute.tsx";
 import SettingsRoute from "./routes/SettingsRoute.tsx";
 import { nostrService } from "./services";
+import OnboardingRoute from "./routes/OnboardingRoute.tsx";
+import { configRepository } from "./database";
 
-// Initialize keys and start Nostr listening
-nostrService.initAndStart().catch((error) => {
-  console.error("Failed to initialize Nostr:", error);
-});
+// Initialize keys and start Nostr listening (only after onboarding)
+(async () => {
+  const onboarded = await configRepository.isOnboarded();
+  if (onboarded) {
+    nostrService.initAndStart().catch((error) => {
+      console.error("Failed to initialize Nostr:", error);
+    });
+  }
+})();
 
 const router = createBrowserRouter([
+  // Onboarding branch
+  {
+    path: "/onboarding",
+    element: <OnboardingRoute />,
+  },
+  // Main app branch
   {
     path: "/",
     element: <BaseRoute />,
     children: [
-      {
-        path: "",
-        element: <HomeRoute />,
-      },
+      { path: "", element: <HomeRoute /> },
       { path: "/wallet", element: <WalletRoute /> },
       { path: "/connect", element: <ConnectRoute /> },
       { path: "/settings", element: <SettingsRoute /> },
