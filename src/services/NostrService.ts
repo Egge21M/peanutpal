@@ -4,6 +4,7 @@ import { SimplePool, type Event } from "nostr-tools";
 import { walletService } from "./WalletService";
 import { proofRepository } from "../database";
 import { configRepository } from "../database";
+import { keyService } from "./KeyService";
 import { toast } from "react-toastify";
 
 export class NostrService {
@@ -93,19 +94,8 @@ export class NostrService {
    * Initialize keys and relays and start listening based on local storage key
    */
   async initAndStart(): Promise<void> {
-    const { generateSecretKey, getPublicKey } = await import("nostr-tools");
-    const { decode, nsecEncode } = await import("nostr-tools/nip19");
-
-    if (!localStorage.getItem("peanut-key")) {
-      const newKey = generateSecretKey();
-      const encoded = nsecEncode(newKey);
-      localStorage.setItem("peanut-key", encoded);
-    }
-
-    const nsec = localStorage.getItem("peanut-key") as `nsec1${string}`;
-    const decoded = decode(nsec);
-    const pk = getPublicKey(decoded.data);
-    await this.startListening(pk, decoded.data);
+    const { pk, sk } = await keyService.getKeypair();
+    await this.startListening(pk, sk);
   }
 
   /**

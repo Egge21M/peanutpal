@@ -4,23 +4,23 @@ import { wordlist } from "@scure/bip39/wordlists/english";
 import { getPublicKey } from "nostr-tools";
 import { npubEncode } from "nostr-tools/nip19";
 
-function generateNewMnemonic() {
+export function generateNewMnemonic() {
   return bip39.generateMnemonic(wordlist);
 }
 
-function deriveNostrMainKeypair(mnemonic: string) {
+export function deriveNostrMainKeypair(mnemonic: string) {
   const sk = nip06.privateKeyFromSeedWords(mnemonic, undefined, 0);
   const { pk, npub } = deriveNostrPublickeys(sk);
   return { sk, pk, npub };
 }
 
-function deriveNostrChildKeypair(mnemonic: string, index: number) {
+export function deriveNostrChildKeypair(mnemonic: string, index: number) {
   const sk = nip06.privateKeyFromSeedWords(mnemonic, undefined, index);
   const { pk, npub } = deriveNostrPublickeys(sk);
   return { sk, pk, npub };
 }
 
-function deriveNostrPublickeys(sk: Uint8Array) {
+export function deriveNostrPublickeys(sk: Uint8Array) {
   const pk = getPublicKey(sk);
   const npub = npubEncode(pk);
   return { pk, npub };

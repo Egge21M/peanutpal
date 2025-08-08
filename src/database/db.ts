@@ -22,6 +22,12 @@ export interface AppConfig {
   updatedAt: number; // Timestamp when value was last updated
 }
 
+export interface SecretKeyRecord {
+  key: "nostr-sk"; // Single-key namespace
+  value: Uint8Array; // Raw binary secret key
+  updatedAt: number;
+}
+
 export type WalletEventType = "direct-payment" | "remote-payment" | "withdrawal";
 
 export interface HistoryEvent {
@@ -40,6 +46,7 @@ export class PeanutPalDB extends Dexie {
   processedQuotes!: Table<ProcessedQuote>;
   config!: Table<AppConfig>;
   historyEvents!: Table<HistoryEvent>;
+  keys!: Table<SecretKeyRecord>;
 
   constructor() {
     super("PeanutPalDB");
@@ -73,6 +80,15 @@ export class PeanutPalDB extends Dexie {
       processedQuotes: "&quoteId, processedAt, amount",
       config: "&key, updatedAt",
       historyEvents: "++id, createdAt, type, amount, mintUrl, quoteId",
+    });
+
+    // Version 6: Add binary keys table
+    this.version(6).stores({
+      proofs: "&secret, amount, createdAt, mintUrl",
+      processedQuotes: "&quoteId, processedAt, amount",
+      config: "&key, updatedAt",
+      historyEvents: "++id, createdAt, type, amount, mintUrl, quoteId",
+      keys: "&key, updatedAt",
     });
   }
 }
