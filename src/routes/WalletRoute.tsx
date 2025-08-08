@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { walletService } from "../services";
 import { historyRepository, type HistoryEvent } from "../database";
+import { appEvents } from "../services/EventBus";
 
 function WalletRoute() {
   const [balance, setBalance] = useState<number>(0);
@@ -42,6 +43,16 @@ function WalletRoute() {
     loadWalletData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
+
+  useEffect(() => {
+    const handler = () => {
+      // Refresh current page and balance when wallet changes
+      loadWalletData();
+    };
+    appEvents.addEventListener("wallet:updated", handler as EventListener);
+    return () => appEvents.removeEventListener("wallet:updated", handler as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / pageSize)), [total]);
 

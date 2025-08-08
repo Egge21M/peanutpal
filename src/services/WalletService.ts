@@ -1,6 +1,7 @@
 import { toast } from "react-toastify";
 import { getWalletWithMintUrl } from "../wallet";
 import { proofRepository, historyRepository } from "../database";
+import { appEvents } from "./EventBus";
 import type { MintQuoteResponse, Proof } from "@cashu/cashu-ts";
 
 export interface PaymentResult {
@@ -46,6 +47,9 @@ export class WalletService {
         quoteId: quote.quote,
         metadata: { request: quote.request },
       });
+
+      // Emit wallet updated event
+      appEvents.emitWalletUpdated({ reason: "payment", amount: quote.amount });
 
       // Show success toast
       const message =
