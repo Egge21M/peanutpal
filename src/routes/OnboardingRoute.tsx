@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { configRepository } from "../database";
 import { useNavigate } from "react-router";
 import { toast } from "react-toastify";
 import { nostrService } from "../services";
+import { keyService } from "../services/KeyService";
+import { generateNewMnemonic } from "../keys";
 
 function OnboardingRoute() {
   const navigate = useNavigate();
@@ -10,6 +12,9 @@ function OnboardingRoute() {
   const [relaysText, setRelaysText] = useState("wss://relay.damus.io");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [mode, setMode] = useState<"create" | "restore">("create");
+  const [mnemonic, setMnemonic] = useState<string>("");
+  const [restoreMnemonic, setRestoreMnemonic] = useState<string>("");
 
   useEffect(() => {
     (async () => {
@@ -20,6 +25,11 @@ function OnboardingRoute() {
         ]);
         setMintUrl(url);
         setRelaysText(relays.join("\n"));
+        // If no key exists, generate a new mnemonic to display to the user
+        const hasKey = await keyService.hasSecretKey();
+        if (!hasKey) {
+          setMnemonic(generateNewMnemonic());
+        }
       } catch (error) {
         console.error("Failed to load defaults:", error);
       } finally {
@@ -45,11 +55,27 @@ function OnboardingRoute() {
         return;
       }
 
-      await Promise.all([
-        configRepository.setMintUrl(mintUrl),
-        configRepository.setRelays(relays),
-        configRepository.setOnboarded(true),
-      ]);
+      await Promise.all([configRepository.setMintUrl(mintUrl), configRepository.setRelays(relays)]);
+
+      if (mode === "restore") {
+        if (!restoreMnemonic.trim()) {
+          toast.error("Please enter your mnemonic to restore");
+          return;
+        }
+        await keyService.createFromMnemonic(restoreMnemonic.trim());
+      } else {
+        // Ensure a key exists; if not, derive from shown mnemonic
+        const hasKey = await keyService.hasSecretKey();
+        if (!hasKey) {
+          if (!mnemonic) {
+            toast.error("Mnemonic is missing. Please reload the page.");
+            return;
+          }
+          await keyService.createFromMnemonic(mnemonic);
+        }
+      }
+
+      await configRepository.setOnboarded(true);
 
       // Start Nostr now that onboarding is complete
       await nostrService.initAndStart();
@@ -93,6 +119,30 @@ function OnboardingRoute() {
               </p>
             </div>
 
+            {/* Mode Switch */}
+            <div className="flex gap-3">
+              <button
+                onClick={() => setMode("create")}
+                className={`px-4 py-2 rounded-md border text-sm ${
+                  mode === "create"
+                    ? "bg-purple-600 text-white border-purple-600"
+                    : "bg-white text-gray-700 border-gray-300"
+                }`}
+              >
+                New Wallet
+              </button>
+              <button
+                onClick={() => setMode("restore")}
+                className={`px-4 py-2 rounded-md border text-sm ${
+                  mode === "restore"
+                    ? "bg-purple-600 text-white border-purple-600"
+                    : "bg-white text-gray-700 border-gray-300"
+                }`}
+              >
+                Restore Wallet
+              </button>
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Mint URL</label>
               <input
@@ -115,6 +165,36 @@ function OnboardingRoute() {
               />
               <p className="text-xs text-gray-500 mt-1">One relay per line.</p>
             </div>
+
+            {mode === "create" && mnemonic && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Your Recovery Phrase (Write this down!)
+                </label>
+                <div className="bg-purple-50 border border-purple-200 text-purple-900 rounded-md p-4 font-mono text-sm break-words">
+                  {mnemonic}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  This 12-word phrase can restore your wallet on any device. Keep it safe and
+                  private.
+                </p>
+              </div>
+            )}
+
+            {mode === "restore" && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Enter Recovery Phrase
+                </label>
+                <textarea
+                  value={restoreMnemonic}
+                  onChange={(e) => setRestoreMnemonic(e.target.value)}
+                  rows={3}
+                  placeholder="twelve words here ..."
+                  className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 font-mono text-sm"
+                />
+              </div>
+            )}
 
             <div className="flex gap-3">
               <button
