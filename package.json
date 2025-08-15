@@ -18,6 +18,7 @@
     "@tailwindcss/vite": "^4.1.11",
     "@types/canvas-confetti": "^1.9.0",
     "canvas-confetti": "^1.9.3",
+    "cashu-kym": "^0.3.0",
     "dexie": "^4.0.11",
     "nostr-tools": "^2.16.2",
     "react": "^19.1.1",

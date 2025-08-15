@@ -12,6 +12,11 @@ import SettingsRoute from "./routes/SettingsRoute.tsx";
 import { nostrService } from "./services";
 import OnboardingRoute from "./routes/OnboardingRoute.tsx";
 import { configRepository } from "./database";
+import WelcomeRoute from "./routes/onboarding/WelcomeRoute.tsx";
+import MnemonicRoute from "./routes/onboarding/MnemonicRoute.tsx";
+import MintSelectionRoute from "./routes/onboarding/MintSelectionRoute.tsx";
+import RelayConfigRoute from "./routes/onboarding/RelayConfigRoute.tsx";
+import CompleteRoute from "./routes/onboarding/CompleteRoute.tsx";
 
 // Initialize keys and start Nostr listening (only after onboarding)
 (async () => {
@@ -24,9 +29,21 @@ import { configRepository } from "./database";
 })();
 
 const router = createBrowserRouter([
-  // Onboarding branch
+  // Multi-step onboarding flow
   {
     path: "/onboarding",
+    children: [
+      { path: "", element: <WelcomeRoute /> },
+      { path: "welcome", element: <WelcomeRoute /> },
+      { path: "mnemonic", element: <MnemonicRoute /> },
+      { path: "mint-selection", element: <MintSelectionRoute /> },
+      { path: "relay-config", element: <RelayConfigRoute /> },
+      { path: "complete", element: <CompleteRoute /> },
+    ],
+  },
+  // Legacy single-step onboarding (can be removed later)
+  {
+    path: "/onboarding-legacy",
     element: <OnboardingRoute />,
   },
   // Main app branch
