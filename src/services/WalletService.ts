@@ -1,6 +1,6 @@
 import { toast } from "react-toastify";
-import { getWalletWithMintUrl } from "../wallet";
-import { proofRepository, historyRepository } from "../database";
+import { walletProvider } from "../wallet";
+import { proofRepository, historyRepository, configRepository } from "../database";
 import { appEvents } from "./EventBus";
 import { CashuWallet, getEncodedTokenV4 } from "@cashu/cashu-ts";
 import type { MintQuoteResponse, Proof, ProofState } from "@cashu/cashu-ts";
@@ -26,10 +26,13 @@ export class WalletService {
       console.log("Processing paid invoice for amount:", quote.amount);
 
       // Use the wallet bound to the currently configured mint URL
-      const { wallet, mintUrl } = await getWalletWithMintUrl();
+      const { wallet, mintUrl } = await walletProvider.getWalletWithMintUrl();
+      const counter = await configRepository.getCounter();
+      console.log("Counter is ", counter);
 
       // Mint proofs from the wallet
-      const newProofs = await wallet.mintProofs(quote.amount, quote.quote);
+      const newProofs = await wallet.mintProofs(quote.amount, quote.quote, { counter });
+      await configRepository.incrementCounter(newProofs.length);
       console.log("Minted proofs:", newProofs);
 
       // Store proofs under the exact mint URL used by the wallet
@@ -171,7 +174,7 @@ export class WalletService {
       }
 
       // Use current configured wallet/mint
-      const { wallet, mintUrl } = await getWalletWithMintUrl();
+      const { wallet, mintUrl } = await walletProvider.getWalletWithMintUrl();
       const selectedProofs = allUnspent.filter((p) => p.mintUrl === mintUrl);
       if (selectedProofs.length === 0) {
         return { error: "No unspent proofs for current mint" };

@@ -22,9 +22,9 @@ export interface AppConfig {
   updatedAt: number; // Timestamp when value was last updated
 }
 
-export interface SecretKeyRecord {
-  key: "nostr-sk"; // Single-key namespace
-  value: Uint8Array; // Raw binary secret key
+export interface KeyRecord {
+  key: string; // e.g., "nostr-sk", "mnemonic", "bip39-seed"
+  value: Uint8Array | string; // binary or text payload depending on key
   updatedAt: number;
 }
 
@@ -46,7 +46,7 @@ export class PeanutPalDB extends Dexie {
   processedQuotes!: Table<ProcessedQuote>;
   config!: Table<AppConfig>;
   historyEvents!: Table<HistoryEvent>;
-  keys!: Table<SecretKeyRecord>;
+  keys!: Table<KeyRecord>;
 
   constructor() {
     super("PeanutPalDB");
@@ -84,6 +84,15 @@ export class PeanutPalDB extends Dexie {
 
     // Version 6: Add binary keys table
     this.version(6).stores({
+      proofs: "&secret, amount, createdAt, mintUrl",
+      processedQuotes: "&quoteId, processedAt, amount",
+      config: "&key, updatedAt",
+      historyEvents: "++id, createdAt, type, amount, mintUrl, quoteId",
+      keys: "&key, updatedAt",
+    });
+
+    // Version 7: Widen keys.value type (no schema change, version bump for migrations)
+    this.version(7).stores({
       proofs: "&secret, amount, createdAt, mintUrl",
       processedQuotes: "&quoteId, processedAt, amount",
       config: "&key, updatedAt",

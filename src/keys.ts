@@ -8,6 +8,10 @@ export function generateNewMnemonic() {
   return bip39.generateMnemonic(wordlist);
 }
 
+export function deriveBip39Seed(mnemonic: string) {
+  return bip39.mnemonicToSeed(mnemonic);
+}
+
 export function deriveNostrMainKeypair(mnemonic: string) {
   const sk = nip06.privateKeyFromSeedWords(mnemonic, undefined, 0);
   const { pk, npub } = deriveNostrPublickeys(sk);

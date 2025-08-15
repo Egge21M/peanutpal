@@ -1,31 +1,27 @@
 import { CashuMint, CashuWallet } from "@cashu/cashu-ts";
 import { configRepository } from "./database";
+import { keyService } from "./services/KeyService";
 
-// Default mint URL mirrors the default seeded in ConfigRepository
-const DEFAULT_MINT_URL = "https://mint.minibits.cash/Bitcoin";
+class WalletProvider {
+  private walletCache: Record<string, CashuWallet> = {};
 
-// Legacy export for existing synchronous consumers
-export const wallet = new CashuWallet(new CashuMint(DEFAULT_MINT_URL));
-
-let cached: { wallet: CashuWallet; mintUrl: string } = {
-  wallet,
-  mintUrl: DEFAULT_MINT_URL,
-};
-
-/**
- * Returns a wallet instance paired with the currently configured mint URL.
- * If the config mint changes, a new wallet will be created and cached.
- */
-export async function getWalletWithMintUrl(): Promise<{
-  wallet: CashuWallet;
-  mintUrl: string;
-}> {
-  const mintUrl = await configRepository.getMintUrl();
-  if (mintUrl !== cached.mintUrl) {
-    cached = {
-      mintUrl,
-      wallet: new CashuWallet(new CashuMint(mintUrl)),
-    };
+  /**
+   * Returns a wallet instance paired with the currently configured mint URL.
+   * If the config mint changes, a new wallet will be created and cached.
+   */
+  async getWalletWithMintUrl() {
+    const seed = await keyService.getBip39Seed();
+    if (!seed) {
+      throw new Error("Can not instantiate wallet without seed in DB.");
+    }
+    const mintUrl = await configRepository.getMintUrl();
+    if (this.walletCache[mintUrl]) {
+      return { wallet: this.walletCache[mintUrl], mintUrl };
+    }
+    const newWallet = new CashuWallet(new CashuMint(mintUrl), { bip39seed: seed });
+    this.walletCache[mintUrl] = newWallet;
+    return { wallet: newWallet, mintUrl };
   }
-  return cached;
 }
+
+export const walletProvider = new WalletProvider();

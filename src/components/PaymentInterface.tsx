@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import NumberPad from "./NumberPad";
 import InvoiceModal from "./InvoiceModal";
 import type { MintQuoteResponse } from "@cashu/cashu-ts";
-import { getWalletWithMintUrl } from "../wallet";
+import { walletProvider } from "../wallet";
 import { walletService } from "../services";
 
 interface PaymentInterfaceProps {
@@ -10,17 +10,14 @@ interface PaymentInterfaceProps {
   resetTrigger?: number; // Optional prop to reset the NumberPad from parent
 }
 
-function PaymentInterface({
-  onPaymentReceived,
-  resetTrigger,
-}: PaymentInterfaceProps) {
+function PaymentInterface({ onPaymentReceived, resetTrigger }: PaymentInterfaceProps) {
   const [quote, setQuote] = useState<MintQuoteResponse>();
   const [internalResetTrigger, setInternalResetTrigger] = useState(0);
 
   // Handle amount submission from NumberPad
   async function handleSubmit(amount: number) {
     try {
-      const { wallet } = await getWalletWithMintUrl();
+      const { wallet } = await walletProvider.getWalletWithMintUrl();
       const quote = await wallet.createMintQuote(amount);
       setQuote(quote);
     } catch (error) {
@@ -32,7 +29,7 @@ function PaymentInterface({
   // Monitor for payment when quote exists
   useEffect(() => {
     async function handleSubscription() {
-      const { wallet } = await getWalletWithMintUrl();
+      const { wallet } = await walletProvider.getWalletWithMintUrl();
       if (quote) {
         wallet.onMintQuotePaid(
           quote.quote,
